@@ -298,33 +298,31 @@ class ReActAgent(BaseWorkflowAgent):
             self.reasoning_key, default=[]
         )
 
-        if len(current_reasoning) > 0 and isinstance(
-            current_reasoning[-1], ResponseReasoningStep
-        ):
+        if len(current_reasoning) > 0:
             reasoning_str = "\n".join([x.get_content() for x in current_reasoning])
 
             if reasoning_str:
                 reasoning_msg = ChatMessage(role="assistant", content=reasoning_str)
                 await memory.aput(reasoning_msg)
-                await ctx.store.set(self.reasoning_key, [])
 
-            # Find the text block in the response to modify it directly
-            text_block = None
-            for block in output.response.blocks:
-                if isinstance(block, TextBlock):
-                    text_block = block
-                    break
+            if isinstance(current_reasoning[-1], ResponseReasoningStep):
+                # Find the text block in the response to modify it directly
+                text_block = None
+                for block in output.response.blocks:
+                    if isinstance(block, TextBlock):
+                        text_block = block
+                        break
 
-            # remove "Answer:" from the response (now checking text_block.text)
-            if text_block and "Answer:" in text_block.text:
-                start_idx = text_block.text.find("Answer:")
-                if start_idx != -1:
-                    # Modify the .text attribute of the block, NOT response.content
-                    text_block.text = text_block.text[
-                        start_idx + len("Answer:") :
-                    ].strip()
+                # remove "Answer:" from the response (now checking text_block.text)
+                if text_block and "Answer:" in text_block.text:
+                    start_idx = text_block.text.find("Answer:")
+                    if start_idx != -1:
+                        # Modify the .text attribute of the block, NOT response.content
+                        text_block.text = text_block.text[
+                            start_idx + len("Answer:") :
+                        ].strip()
 
-            # clear scratchpad
-            await ctx.store.set(self.reasoning_key, [])
+        # clear scratchpad
+        await ctx.store.set(self.reasoning_key, [])
 
         return output
